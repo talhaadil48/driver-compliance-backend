@@ -1,0 +1,26 @@
+# Environment & secrets (CRITICAL: Do NOT commit)
+.env
+.env.*
+!.env.example
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+app/**/__pycache__/
+
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Local uploads
+uploads/
+
+# Vercel & deployment
+.vercel/
+
+# Virtual environments
+venv/
+.venv/
+env/
