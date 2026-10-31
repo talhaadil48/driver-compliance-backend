@@ -24,3 +24,5 @@ uploads/
 venv/
 .venv/
 env/
+
+.vercel

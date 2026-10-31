@@ -1,8 +1,11 @@
+import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Optimized connect arguments and connection pool
 connect_args = {}
@@ -13,13 +16,18 @@ engine_kwargs = {
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 else:
-    # High-performance persistent connection pooling for remote AWS RDS PostgreSQL
-    engine_kwargs.update({
-        "pool_size": 10,
-        "max_overflow": 20,
-        "pool_recycle": 1800,
-        "pool_timeout": 30,
-    })
+    # On Serverless platforms like Vercel, use NullPool to avoid connection pool exhaustion
+    if os.environ.get("VERCEL") == "1":
+        from sqlalchemy.pool import NullPool
+        engine_kwargs["poolclass"] = NullPool
+    else:
+        # Persistent connection pooling for dedicated/local server
+        engine_kwargs.update({
+            "pool_size": 10,
+            "max_overflow": 20,
+            "pool_recycle": 1800,
+            "pool_timeout": 30,
+        })
 
 engine = create_engine(
     DATABASE_URL,
