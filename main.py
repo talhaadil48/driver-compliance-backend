@@ -38,8 +38,9 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Mount local uploads for dev fallback
 try:
-    os.makedirs(settings.LOCAL_STORAGE_DIR, exist_ok=True)
-    app.mount("/local-files", StaticFiles(directory=settings.LOCAL_STORAGE_DIR), name="local_files")
+    upload_dir = "/tmp/uploads" if os.environ.get("VERCEL") == "1" else settings.LOCAL_STORAGE_DIR
+    os.makedirs(upload_dir, exist_ok=True)
+    app.mount("/local-files", StaticFiles(directory=upload_dir), name="local_files")
 except Exception as e:
     print(f"[Notice] Local storage mount skipped: {e}")
 

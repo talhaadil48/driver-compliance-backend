@@ -1,4 +1,5 @@
 import os
+import re
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
@@ -6,6 +7,20 @@ from app.core.config import settings
 DATABASE_URL = settings.DATABASE_URL
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# Fix SSL root certificate path if pointing to a machine-specific or non-existent path
+match = re.search(r'[?&]sslrootcert=([^&]+)', DATABASE_URL)
+if match:
+    cert_path = match.group(1)
+    if not os.path.exists(cert_path):
+        # 1. Try bundled certificate in certs/global-bundle.pem inside backend
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        bundle_path = os.path.join(base_dir, 'certs', 'global-bundle.pem')
+        if os.path.exists(bundle_path):
+            DATABASE_URL = DATABASE_URL.replace(cert_path, bundle_path.replace("\\", "/"))
+        else:
+            # 2. Fall back to system trusted roots as suggested by psycopg
+            DATABASE_URL = DATABASE_URL.replace(cert_path, "system")
 
 # Optimized connect arguments and connection pool
 connect_args = {}
