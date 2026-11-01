@@ -170,6 +170,10 @@ def update_driver_fields(
     
     # Audit log changes
     for field, val in update_dict.items():
+        if field == "autism_awareness_expiry_enabled":
+            setattr(driver, field, val)
+            continue
+
         old_val = getattr(driver, field, None)
         
         # Compare normalized values
