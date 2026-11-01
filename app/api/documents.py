@@ -21,6 +21,7 @@ from app.schemas.document import (
     ConfirmReplaceRequest,
 )
 from app.services.storage import storage_service
+from app.services.audit import record_driver_audit
 
 router = APIRouter(prefix="/documents", tags=["Driver Documents"])
 
@@ -126,6 +127,18 @@ def confirm_upload_document(
         uploaded_by_staff_id=current_staff.id
     )
     db.add(doc)
+    
+    # Audit log
+    record_driver_audit(
+        db=db,
+        driver_id=driver_id,
+        staff=current_staff,
+        action_type="DOCUMENT_UPLOAD",
+        field_name=f"Document: {doc_type.name}",
+        old_value=None,
+        new_value=f"{data.file_name} (Uploaded)",
+        notes=data.notes
+    )
     db.commit()
     db.refresh(doc)
 
@@ -201,6 +214,9 @@ def confirm_replace_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document record not found")
 
+    old_file_name = doc.file_name
+    doc_type_name = doc.document_type.name if doc.document_type else "Document"
+
     doc.file_name = data.file_name
     doc.file_key = data.file_key
     doc.file_size = data.file_size
@@ -209,6 +225,18 @@ def confirm_replace_document(
     if data.notes is not None:
         doc.notes = data.notes.strip()
     doc.uploaded_by_staff_id = current_staff.id
+
+    # Audit log
+    record_driver_audit(
+        db=db,
+        driver_id=doc.driver_id,
+        staff=current_staff,
+        action_type="DOCUMENT_REPLACE",
+        field_name=f"Document: {doc_type_name}",
+        old_value=f"Old file: {old_file_name}",
+        new_value=f"Replaced with: {data.file_name}",
+        notes=data.notes
+    )
 
     db.commit()
     db.refresh(doc)
@@ -295,6 +323,18 @@ async def upload_driver_document(
         uploaded_by_staff_id=current_staff.id
     )
     db.add(doc)
+
+    record_driver_audit(
+        db=db,
+        driver_id=driver_id,
+        staff=current_staff,
+        action_type="DOCUMENT_UPLOAD",
+        field_name=f"Document: {doc_type.name}",
+        old_value=None,
+        new_value=f"{raw_name} (Uploaded)",
+        notes=notes
+    )
+
     db.commit()
     db.refresh(doc)
 
@@ -337,6 +377,9 @@ async def replace_driver_document(
     content = await file.read()
     file_size = len(content)
 
+    old_raw_name = doc.file_name
+    doc_type_name = doc.document_type.name if doc.document_type else "Document"
+
     # Delete old file
     old_key = doc.file_key
     old_storage = doc.storage_type
@@ -367,6 +410,17 @@ async def replace_driver_document(
     if notes is not None:
         doc.notes = notes.strip()
     doc.uploaded_by_staff_id = current_staff.id
+
+    record_driver_audit(
+        db=db,
+        driver_id=doc.driver_id,
+        staff=current_staff,
+        action_type="DOCUMENT_REPLACE",
+        field_name=f"Document: {doc_type_name}",
+        old_value=f"Old file: {old_raw_name}",
+        new_value=f"Replaced with: {raw_name}",
+        notes=notes
+    )
 
     db.commit()
     db.refresh(doc)
@@ -457,6 +511,19 @@ def delete_document(
         storage_service.delete_file(doc.file_key, doc.storage_type)
     except Exception as e:
         print(f"[Document Deletion Warning]: {e}")
+
+    # Audit log
+    doc_name = doc.file_name
+    doc_type_name = doc.document_type.name if doc.document_type else "Document"
+    record_driver_audit(
+        db=db,
+        driver_id=doc.driver_id,
+        staff=current_staff,
+        action_type="DOCUMENT_DELETE",
+        field_name=f"Document: {doc_type_name}",
+        old_value=doc_name,
+        new_value="Deleted from storage"
+    )
 
     db.delete(doc)
     db.commit()

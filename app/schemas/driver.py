@@ -54,6 +54,7 @@ class DriverListResponse(BaseModel):
     full_name: str
     type: Optional[str] = "Driver"
     callsign: Optional[str] = None
+    phone: Optional[str] = None
     dob: Optional[date] = None
     national_insurance_number: Optional[str] = None
     is_active: bool
