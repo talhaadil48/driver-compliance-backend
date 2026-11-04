@@ -113,19 +113,21 @@ def init_database():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        # Seed initial admin staff user
-        admin_email = settings.INITIAL_ADMIN_EMAIL.lower().strip()
-        existing_admin = db.query(StaffUser).filter(StaffUser.email == admin_email).first()
+        # Seed initial admin staff user only if no admin account exists
+        existing_admin = db.query(StaffUser).filter(StaffUser.role == "admin").first()
         if not existing_admin:
-            admin_user = StaffUser(
-                email=admin_email,
-                full_name=settings.INITIAL_ADMIN_NAME,
-                hashed_password=get_password_hash(settings.INITIAL_ADMIN_PASSWORD),
-                role="admin",
-                is_active=True
-            )
-            db.add(admin_user)
-            print(f"[Init DB] Created default admin account: {admin_email}")
+            admin_email = settings.INITIAL_ADMIN_EMAIL.lower().strip()
+            existing_user = db.query(StaffUser).filter(StaffUser.email == admin_email).first()
+            if not existing_user:
+                admin_user = StaffUser(
+                    email=admin_email,
+                    full_name=settings.INITIAL_ADMIN_NAME,
+                    hashed_password=get_password_hash(settings.INITIAL_ADMIN_PASSWORD),
+                    role="admin",
+                    is_active=True
+                )
+                db.add(admin_user)
+                print(f"[Init DB] Created default admin account: {admin_email}")
 
         # Seed default document types
         for dt_data in DEFAULT_DOCUMENT_TYPES:
